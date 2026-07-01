@@ -7,10 +7,25 @@ from services.image_gen import generate_receipt_image
 
 app = FastAPI(title="The Petty Receipt API")
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+# --- АВТОМАТИЧЕСКИЙ НЕУБИВАЕМЫЙ ПОИСК ФАЙЛА INDEX.HTML ---
+def find_index_html():
+    # Начинаем поиск с самого корня проекта на сервере Render
+    root_dir = "/opt/render/project/src"
+    
+    # Если вдруг папка другая, берем текущую директорию кода
+    if not os.path.exists(root_dir):
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        
+    # Сканируем абсолютно все папки в проекте в поисках index.html
+    for root, dirs, files in os.walk(root_dir):
+        if "index.html" in files:
+            found_path = os.path.join(root, "index.html")
+            print(f"--- УРА! Файл index.html найден по пути: {found_path} ---")
+            return found_path
+    return None
 
-# Находим точный путь к файлу index.html
-INDEX_HTML_PATH = os.path.join(current_dir, "template", "index.html")
+INDEX_HTML_PATH = find_index_html()
+# --------------------------------------------------------
 
 class ReceiptItem(BaseModel):
     name: str
@@ -20,12 +35,15 @@ class ReceiptRequest(BaseModel):
     items: List[ReceiptItem]
     roast_text: str
 
-# 1. Главная страница сайта — теперь отдаем файл напрямую!
+# 1. Главная страница сайта
 @app.get("/")
 async def read_root():
-    # Проверяем, существует ли файл, чтобы выдать красивую ошибку, если ты забыл его создать
-    if not os.path.exists(INDEX_HTML_PATH):
-        raise HTTPException(status_code=404, detail=f"index.html not found at {INDEX_HTML_PATH}")
+    # Если поисковик не нашел файл во время старта
+    if not INDEX_HTML_PATH:
+        raise HTTPException(
+            status_code=404, 
+            detail="index.html absolute panic! The file is literally missing from the GitHub repository."
+        )
     return FileResponse(INDEX_HTML_PATH)
 
 # 2. Эндпоинт генерации чека
