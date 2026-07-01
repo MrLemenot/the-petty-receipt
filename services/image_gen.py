@@ -1,3 +1,4 @@
+import os
 from PIL import Image, ImageDraw, ImageFont
 import io
 import datetime
@@ -42,11 +43,22 @@ def generate_receipt_image(context):
     image = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(image)
     
+    # --- ЖЕЛЕЗОБЕТОННОЕ ПОДКЛЮЧЕНИЕ ШРИФТОВ ---
+    # Находим папку, где лежит этот файл (services/)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Собираем пути к файлам шрифтов в этой же папке
+    font_path_regular = os.path.join(current_dir, "cour.ttf")
+    font_path_bold = os.path.join(current_dir, "courbd.ttf")
+    
     try:
-        font = ImageFont.truetype("cour.ttf", 16)
-        font_bold = ImageFont.truetype("courbd.ttf", 22)
-        font_small = ImageFont.truetype("cour.ttf", 12)
-    except:
+        # Пробуем загрузить правильные шрифты из папки проекта
+        font = ImageFont.truetype(font_path_regular, 16)
+        font_bold = ImageFont.truetype(font_path_bold, 22)
+        font_small = ImageFont.truetype(font_path_regular, 12)
+    except Exception as e:
+        # Если файлы потеряются, выведем предупреждение в логи Render
+        print(f"!!! ШРИФТЫ НЕ НАЙДЕНЫ. Ошибка: {e} !!!")
         font = ImageFont.load_default()
         font_bold = font
         font_small = font
