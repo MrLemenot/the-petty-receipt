@@ -52,13 +52,14 @@ def generate_receipt_image(context):
     font_path_bold = os.path.join(current_dir, "courbd.ttf")
     
     try:
-        # Пробуем загрузить правильные шрифты из папки проекта
-        font = ImageFont.truetype(font_path_regular, 16)
-        font_bold = ImageFont.truetype(font_path_bold, 22)
-        font_small = ImageFont.truetype(font_path_regular, 12)
+        # Явно указываем кодировку UTF-8 и базовый движок компоновки для Linux
+        font = ImageFont.truetype(font_path_regular, 16, encoding="utf-8", layout_engine=ImageFont.Layout.BASIC)
+        font_bold = ImageFont.truetype(font_path_bold, 22, encoding="utf-8", layout_engine=ImageFont.Layout.BASIC)
+        font_small = ImageFont.truetype(font_path_regular, 12, encoding="utf-8", layout_engine=ImageFont.Layout.BASIC)
+        print("--- ШРИФТЫ УСПЕШНО ЗАГРУЖЕНЫ С ПОДДЕРЖКОЙ ЮНИКОДА ---")
     except Exception as e:
-        # Если файлы потеряются, выведем предупреждение в логи Render
-        print(f"!!! ШРИФТЫ НЕ НАЙДЕНЫ. Ошибка: {e} !!!")
+        # Если что-то пойдет не так, мы увидим точную причину в логах Render
+        print(f"!!! ОШИБКА ЗАГРУЗКИ ШРИФТОВ: {e} !!!")
         font = ImageFont.load_default()
         font_bold = font
         font_small = font
