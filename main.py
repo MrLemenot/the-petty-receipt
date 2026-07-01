@@ -10,7 +10,7 @@ app = FastAPI(title="The Petty Receipt API")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Находим точный путь к файлу index.html
-INDEX_HTML_PATH = os.path.join(current_dir, "index.html")
+INDEX_HTML_PATH = os.path.join(current_dir, "template", "index.html")
 
 class ReceiptItem(BaseModel):
     name: str
