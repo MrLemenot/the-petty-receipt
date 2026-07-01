@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- Оптимизация для мобильных: запрещаем авто-зум при фокусе на кнопках -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Petty Receipt — Официальный Audit Времени</title>
+    <style>
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; /* Убираем синюю рамку при тапе на мобилках */
+        }
+        body { 
+            background: #ffffff; 
+            color: #000000; 
+            font-family: 'Courier New', Courier, monospace; 
+            padding-bottom: 40px; 
+            overflow-x: hidden; /* Защита от горизонтального скролла */
+        }
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(#f0f0f0 1px, transparent 1px), linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
+            background-size: 20px 20px; z-index: -1;
+        }
+        
+        /* АДАПТИВНАЯ ШАПКА */
+        header {
+            display: grid; 
+            grid-template-columns: 1fr auto; 
+            gap: 10px;
+            align-items: center; 
+            padding: 15px 20px;
+            border-bottom: 2px solid #000000; 
+            background: #ffffff; 
+            font-size: 11px; 
+            font-weight: bold; 
+            text-transform: uppercase;
+        }
+        header div:nth-child(1) { text-align: left; }
+        /* Прячем статус "В СЕТИ" на мелких мобилках, чтобы не загромождать экран */
+        header div:nth-child(2) { text-align: right; }
+        header div:nth-child(3) { 
+            grid-column: 1 / span 2; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 5px;
+        }
+        
+        /* Десктопная шапка (возвращаем в 1 строку, если экран большой) */
+        @media (min-width: 600px) {
+            header {
+                grid-template-columns: 1fr auto 1fr;
+                font-size: 12px;
+                padding: 15px 30px;
+            }
+            header div:nth-child(2) { text-align: center; display: block !important; }
+            header div:nth-child(3) { 
+                grid-column: auto; 
+                display: flex; 
+                justify-content: flex-end; 
+                gap: 15px; 
+                border-top: none;
+                padding-top: 0;
+                margin-top: 0;
+            }
+        }
+
+        .lang-btn { background: #000; color: #fff; border: 1px solid #000; padding: 4px 10px; font-family: inherit; font-size: 11px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
+        .lang-btn:hover { background: #fff; color: #000; }
+        
+        .ticker { background: #000; color: #fff; padding: 6px 0; overflow: hidden; white-space: nowrap; font-size: 11px; border-bottom: 2px solid #000; display: flex; }
+        .ticker-wrap { display: inline-block; animation: marquee 60s linear infinite; }
+        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
+        
+        /* ГЛАВНЫЙ КОНТЕЙНЕР */
+        .main-landing { max-width: 1000px; margin: 30px auto 0; padding: 0 15px; display: flex; flex-direction: column; align-items: center; }
+        
+        .hero { text-align: center; margin-bottom: 30px; }
+        .hero h1 { font-size: clamp(32px, 10vw, 72px); text-transform: uppercase; line-height: 0.9; letter-spacing: -1px; margin-bottom: 15px; }
+        .hero p { font-size: 14px; max-width: 600px; margin: 0 auto; line-height: 1.4; padding: 0 10px; }
+        
+        .live-counter { text-align: center; border: 2px solid #000; padding: 15px; margin-bottom: 30px; background: #000; color: #fff; width: 100%; max-width: 600px; }
+        .counter-num { font-size: clamp(20px, 6vw, 32px); font-weight: bold; word-break: break-all; }
+        
+        /* КАРТОЧКИ ФИЧ */
+        .grid-features { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 40px; width: 100%; }
+        @media (min-width: 768px) {
+            .grid-features { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 60px; }
+            .main-landing { margin: 60px auto 0; }
+            .hero { margin-bottom: 60px; }
+            .live-counter { padding: 20px; margin-bottom: 60px; }
+        }
+        
+        .card { border: 2px solid #000; background: #ffffff; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .card h3 { text-transform: uppercase; font-size: 16px; margin-bottom: 10px; border-bottom: 2px dashed #000; padding-bottom: 5px; }
+        .card p { font-size: 13px; line-height: 1.4; }
+        
+        .start-zone { width: 100%; text-align: center; padding: 0 5px; }
+        
+        /* ГИГАНТСКАЯ КНОПКА ПОД ТАПЫ */
+        .btn-giant { 
+            background: #000000; color: #ffffff; border: 4px solid #000; padding: 20px 30px; 
+            font-family: inherit; font-size: 18px; font-weight: bold; text-transform: uppercase; 
+            cursor: pointer; width: 100%; max-width: 600px; margin: 0 auto; transition: all 0.1s; 
+            box-shadow: 6px 6px 0px #ccc; display: block; 
+        }
+        @media (min-width: 600px) {
+            .btn-giant { padding: 25px 50px; font-size: 22px; box-shadow: 8px 8px 0px #ccc; }
+        }
+        .btn-giant:active, .btn-giant:hover { background: #ffffff; color: #000000; box-shadow: 0px 0px 0px #ccc; transform: translate(4px, 4px); }
+        
+        /* ЭКРАНЫ КВИЗА */
+        .quiz-container { width: 100%; max-width: 450px; margin: 30px auto 0; padding: 0 15px; }
+        @media (min-width: 600px) { .quiz-container { margin: 60px auto 0; } }
+        
+        .progress { text-align: center; font-size: 13px; margin-bottom: 15px; font-weight: bold; }
+        
+        .quiz-card { background: #ffffff; border: 2px solid #000; padding: 20px; min-height: 200px; display: flex; flex-direction: column; justify-content: space-between; }
+        .question-text { font-size: 15px; font-weight: bold; margin-bottom: 15px; line-height: 1.4; }
+        
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn { background: #ffffff; color: #000000; border: 2px solid #000; padding: 14px 12px; font-family: inherit; font-size: 13px; text-align: left; cursor: pointer; font-weight: bold; line-height: 1.3; }
+        .option-btn:active, .option-btn:hover { background: #f0f0f0; }
+        
+        #result { margin-top: 15px; text-align: center; }
+        img { max-width: 100%; height: auto; border: 2px solid #000; box-shadow: 6px 6px 0px #eee; margin-bottom: 20px; }
+        
+        .result-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 15px; }
+        .action-btn { background: #000; color: #fff; border: 2px solid #000; padding: 15px; font-family: inherit; font-size: 14px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: all 0.1s; }
+        .action-btn.secondary { background: #fff; color: #000; }
+        .action-btn:active { opacity: 0.8; }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <header>
+        <div>THE PETTY RECEIPT</div>
+        <div id="header-status" style="display: none;">СТАТУС: В СЕТИ</div>
+        <div>
+            <span id="live-time">LOADING...</span>
+            <button class="lang-btn" onclick="toggleLanguage()" id="lang-toggle-btn">RU</button>
+        </div>
+    </header>
+
+    <div class="ticker" id="ticker-root"></div>
+
+    <div id="landing-screen" class="main-landing">
+        <div class="hero">
+            <h1>THE PETTY<br>RECEIPT</h1>
+            <p id="main-desc">Хватит врать себе о продуктивности...</p>
+        </div>
+
+        <div class="live-counter">
+            <div id="counter-title" style="font-size: 10px; text-transform: uppercase; margin-bottom: 5px;">Ущерб дедлайнам:</div>
+            <div class="counter-num" id="global-damage">0</div>
+        </div>
+
+        <div class="grid-features">
+            <div class="card">
+                <h3 id="feat1-title">01. Точный аудит</h3>
+                <p id="feat1-desc">...</p>
+            </div>
+            <div class="card">
+                <h3 id="feat2-title">02. Реальный чек</h3>
+                <p id="feat2-desc">...</p>
+            </div>
+            <div class="card">
+                <h3 id="feat3-title">03. Жесткий вердикт</h3>
+                <p id="feat3-desc">...</p>
+            </div>
+        </div>
+
+        <div class="start-zone">
+            <button class="btn-giant" id="start-btn" onclick="startQuiz()">Начать ревизию времени</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="quiz-container hidden">
+        <div class="progress" id="progress">Подготовка...</div>
+        <div class="quiz-card">
+            <div class="question-text" id="question-text">Загрузка...</div>
+            <div class="options" id="options-container"></div>
+        </div>
+    </div>
+
+    <div id="result-screen" class="quiz-container hidden">
+        <div id="result">
+            <h2 id="loading-text" style="text-transform: uppercase; font-size: 16px;">Печать фискального чека...</h2>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'ru';
+        let generatedImgUrl = null;
+        let baseDamageRub = 4829100;
+        let chosenIndexes = [];
+        let activeQuestionsOrder = [];
+        let currentIdx = 0;
+        let blockHistoryPush = false;
+
+        window.addEventListener('popstate', function(event) {
+            if (!event.state || event.state.step === 'home') {
+                generatedImgUrl = null;
+                document.getElementById('result-screen').classList.add('hidden');
+                document.getElementById('quiz-screen').classList.add('hidden');
+                document.getElementById('landing-screen').classList.remove('hidden');
+                currentIdx = 0;
+                chosenIndexes = [];
+                return;
+            }
+
+            const targetStep = event.state.step;
+
+            if (typeof targetStep === 'number') {
+                document.getElementById('landing-screen').classList.add('hidden');
+                document.getElementById('result-screen').classList.add('hidden');
+                document.getElementById('quiz-screen').classList.remove('hidden');
+
+                blockHistoryPush = true;
+
+                if (targetStep < currentIdx) {
+                    while (currentIdx > targetStep) {
+                        currentIdx--;
+                        chosenIndexes.pop();
+                    }
+                } else if (targetStep > currentIdx) {
+                    currentIdx = targetStep;
+                }
+
+                renderQuestion();
+            }
+        });
+
+        const verdictsLogic = [
+            { max: 700,  ru: "ДИАГНОЗ: ПОЧТИ ПУРИТАНЕЦ", en: "VERDICT: ALMOST PRODUCTIVE" },
+            { max: 1500, ru: "ДИАГНОЗ: ЛЕГКАЯ ПРОКРАСТИНАЦИЯ", en: "VERDICT: MILD LAZINESS" },
+            { max: 2300, ru: "ДИАГНОЗ: ПРОФЕССИОНАЛЬНЫЙ ЧАЕПИТЕЦ", en: "VERDICT: PRO TEA DRINKER" },
+            { max: 3200, ru: "ДИАГНОЗ: МАСТЕР ОТГОВОРОК", en: "VERDICT: EXCUSE MASTER" },
+            { max: 99999,ru: "ДИАГНОЗ: КРИТИЧРЕКАЯ УГРОЗА ДЕДЛАЙНУ", en: "VERDICT: CRITICAL DEADLINE THREAT" }
+        ];
+
+        const uiTranslations = {
+            ru: {
+                status: "СТАТУС: В СЕТИ",
+                mainDesc: "Хватит врать себе о продуктивности. Наша система проведет калькуляцию твоих упущенных возможностей.",
+                counterTitle: "Ущерб дедлайнам по всему миру прямо сейчас:",
+                feat1Title: "01. Точный аудит",
+                feat1Desc: "10 вопросов, симулирующих твои ежедневные провалы.",
+                feat2Title: "02. Реальный чек",
+                feat2Desc: "Никакого текста. На выходе ты получаешь строгое PNG-изображение.",
+                feat3Title: "03. Жесткий вердикт",
+                feat3Desc: "Алгоритм выдаст беспощадный финальный диагноз.",
+                startBtn: "Начать ревизию",
+                loadingText: "Печать чека...",
+                progressText: "Вопрос",
+                progressOf: "из",
+                downloadBtn: "Скачать фискальный чек",
+                homeBtn: "Вернуться на главную",
+                ticker: " *** ХВАТИТ СКРОЛЛИТЬ *** СЕССИЯ БЛИЗКО *** ОТКРОЙ РЕДАКТОР КОДА *** ",
+                r_title: "THE PETTY RECEIPT",
+                r_subtitle: "ОФИЦИАЛЬНЫЙ АУДИТ ВРЕМЕНИ",
+                r_date: "ДАТА:",
+                r_total: "ИТОГО:",
+                r_currency: " РУБ",
+                r_footer1: "СПАСИБО ЗА БЕСПОЛЕЗНУЮ",
+                r_footer2: "ТРАТУ ВРЕМЕНИ!"
+            },
+            en: {
+                status: "STATUS: ONLINE",
+                mainDesc: "Stop lying to yourself about productivity. Our system will calculate your wasted potential.",
+                counterTitle: "Global deadline damage right now:",
+                feat1Title: "01. Strict Audit",
+                feat1Desc: "10 questions simulating your daily failures.",
+                feat2Title: "02. Real Receipt",
+                feat2Desc: "No text scores. You get a strict PNG image.",
+                feat3Title: "03. Brutal Roast",
+                feat3Desc: "The algorithm prints a merciless final verdict.",
+                startBtn: "Start Audit",
+                loadingText: "Printing receipt...",
+                progressText: "Question",
+                progressOf: "of",
+                downloadBtn: "Download Receipt",
+                homeBtn: "Back to Main",
+                ticker: " *** STOP SCROLLING *** DEADLINE IS NEAR *** OPEN CODE EDITOR *** ",
+                r_title: "THE PETTY RECEIPT",
+                r_subtitle: "OFFICIAL TIME AUDIT",
+                r_date: "DATE:",
+                r_total: "TOTAL LOSS:",
+                r_currency: "$",
+                r_footer1: "THANK YOU FOR WASTING",
+                r_footer2: "YOUR PRECIOUS TIME!"
+            }
+        };
+
+        const daysRu = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
+        const daysEn = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+        function formatTimeByLang(hours, minutes, seconds = null, lang) {
+            const pad = n => n.toString().padStart(2, '0');
+            if (lang === 'en') {
+                let ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                if (seconds !== null) return `${pad(hours)}:${pad(minutes)}:${pad(seconds)} ${ampm}`;
+                return `${pad(hours)}:${pad(minutes)} ${ampm}`;
+            } else {
+                if (seconds !== null) return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+                return `${pad(hours)}:${pad(minutes)}`;
+            }
+        }
+
+        function getReceiptDateTime(langMode) {
+            let d = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            if (langMode === 'en') {
+                d.setHours(d.getHours() - 7);
+                let datePart = `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+                let dayName = daysEn[d.getDay()];
+                let timePart = formatTimeByLang(d.getHours(), d.getMinutes(), null, 'en');
+                return `${datePart} (${dayName}) ${timePart}`;
+            } else {
+                let datePart = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+                let dayName = daysRu[d.getDay()];
+                let timePart = formatTimeByLang(d.getHours(), d.getMinutes(), null, 'ru');
+                return `${datePart} (${dayName}) ${timePart}`;
+            }
+        }
+
+        function updateUI() {
+            const s = uiTranslations[currentLang];
+            document.getElementById('header-status').innerText = s.status;
+            document.getElementById('main-desc').innerText = s.mainDesc;
+            document.getElementById('counter-title').innerText = s.counterTitle;
+            document.getElementById('feat1-title').innerText = s.feat1Title;
+            document.getElementById('feat1-desc').innerText = s.feat1Desc;
+            document.getElementById('feat2-title').innerText = s.feat2Title;
+            document.getElementById('feat2-desc').innerText = s.feat2Desc;
+            document.getElementById('feat3-title').innerText = s.feat3Title;
+            document.getElementById('feat3-desc').innerText = s.feat3Desc;
+            document.getElementById('start-btn').innerText = s.startBtn;
+            
+            const loadingTextEl = document.getElementById('loading-text');
+            if (loadingTextEl) loadingTextEl.innerText = s.loadingText;
+            
+            const dlBtnEl = document.getElementById('dl-action-btn');
+            if (dlBtnEl) dlBtnEl.innerText = s.downloadBtn;
+            
+            const homeBtnEl = document.getElementById('home-action-btn');
+            if (homeBtnEl) homeBtnEl.innerText = s.homeBtn;
+            
+            const fullTickerStr = s.ticker.repeat(8);
+            document.getElementById('ticker-root').innerHTML = `<div class="ticker-wrap">${fullTickerStr}</div><div class="ticker-wrap">${fullTickerStr}</div>`;
+            document.getElementById('lang-toggle-btn').innerText = currentLang === 'ru' ? 'RU' : 'EN';
+            
+            if (!document.getElementById('quiz-screen').classList.contains('hidden')) {
+                renderQuestion();
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ru' ? 'en' : 'ru';
+            updateUI();
+            if (!document.getElementById('result-screen').classList.contains('hidden') && chosenIndexes.length > 0) {
+                generateAndShowReceipt(); 
+            }
+        }
+
+        setInterval(() => {
+            let d = new Date();
+            if (currentLang === 'en') {
+                d.setHours(d.getHours() - 7);
+                document.getElementById('live-time').innerText = formatTimeByLang(d.getHours(), d.getMinutes(), d.getSeconds(), 'en');
+            } else {
+                document.getElementById('live-time').innerText = formatTimeByLang(d.getHours(), d.getMinutes(), d.getSeconds(), 'ru');
+            }
+        }, 1000);
+
+        setInterval(() => {
+            baseDamageRub += Math.floor(Math.random() * 350) + 50;
+            let displayVal = currentLang === 'ru' ? baseDamageRub : (baseDamageRub / 80);
+            let currencyStr = currentLang === 'ru' ? ' РУБ' : ' USD';
+            let formatted = currentLang === 'ru' ? displayVal.toLocaleString('ru-RU') : displayVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('global-damage').innerText = formatted + currencyStr;
+        }, 800);
+
+        const questionsData = [
+            {
+                ru: { q: "Что ты делаешь, когда садишься за код или учебу?", a: [{t:"Сразу пишу код", c:"Кодинг на фокусе", p:150}, {t:"Выбираю тему в редакторе 40 минут", c:"Кастомизация IDE", p:250}, {t:"Ухожу пить чай", c:"Внеплановый чай", p:200}] },
+                en: { q: "What do you do when you sit down to code or study?", a: [{t:"Start coding immediately", c:"Focused coding", p:150}, {t:"Spend 40 mins choosing an editor theme", c:"IDE theme picker", p:250}, {t:"Go make some tea instead", c:"Unscheduled tea", p:200}] }
+            },
+            {
+                ru: { q: "Твой важный дедлайн или экзамен уже завтра:", a: [{t:"Учу и пишу в последние 3 часа", c:"Паника дедлайна", p:500}, {t:"Делаю вид, что заболел", c:"Симуляция болезни", p:400}, {t:"Всё готово заранее", c:"Синдром отличника", p:50}] },
+                en: { q: "An important deadline or exam is tomorrow:", a: [{t:"Study/code everything in the last 3 hours", c:"Deadline panic", p:500}, {t:"Pretend to be sick", c:"Illness simulation", p:400}, {t:"Everything is ready in advance", c:"A-grade syndrome", p:50}] }
+            },
+            {
+                ru: { q: "Сколько коротких видео (шортсов) ты сегодня посмотрел?", a: [{t:"Только полезные туториалы", c:"\"Полезный\" контент", p:100}, {t:"Сбился со счета", c:"Марафон TikTok/Reels", p:450}, {t:"Вообще не открывал", c:"Дофаминовый детокс", p:0}] },
+                en: { q: "How many short videos (shorts/reels) did you watch today?", a: [{t:"Only 'educational' ones", c:"\"Useful\" brainrot", p:100}, {t:"Lost count completely", c:"Shorts binge-watch", p:450}, {t:"Didn't watch any", c:"Dopamine detox", p:0}] }
+            },
+            {
+                ru: { q: "Когда код выдает синтаксическую ошибку:", a: [{t:"Гуглю, читаю доки, мучу ИИ", c:"Исправление багов с ИИ", p:300}, {t:"Закрываю ноут, это не моё", c:"Капитуляция перед багом", p:350}, {t:"Сижу и смотрю на нее в упор", c:"Взгляд в бездну IDE", p:200}] },
+                en: { q: "When your code throws a syntax error:", a: [{t:"Google it, read docs, ask AI", c:"AI documentation", p:300}, {t:"Close the laptop, it's not for me", c:"Total surrender", p:350}, {t:"Stare at it blankly", c:"Staring at error", p:200}] }
+            },
+            {
+                ru: { q: "Как продвигается подготовка к сессии/экзаменам?", a: [{t:"Переношу на понедельник", c:"Синдром Понедельника", p:400}, {t:"Составляю красивое расписание", c:"Иллюзия планирования", p:250}, {t:"Медленно, но стабильно ботаю", c:"Стабильная зубрежка", p:100}] },
+                en: { q: "How is exam/session preparation going?", a: [{t:"Postpone it to Monday", c:"Monday syndrome", p:400}, {t:"Make a beautiful schedule", c:"Planning illusion", p:250}, {t:"Slowly but steadily grinding", c:"Steady grinding", p:100}] }
+            },
+            {
+                ru: { q: "Что происходит, когда тебе скучно на паре?", a: [{t:"Скроллю ленту под партой", c:"Скроллинг под партой", p:300}, {t:"Кожу свои пет-проекты", c:"Стелс-кодинг", p:150}, {t:"Записываю каждое слово", c:"Имитация лекции", p:200}] },
+                en: { q: "What happen when you are bored during a class?", a: [{t:"Scroll social media under desk", c:"Under-desk scroll", p:300}, {t:"Code pet-projects", c:"Stealth dev session", p:150}, {t:"Write down every word", c:"Simulated notes", p:200}] }
+            },
+            {
+                ru: { q: "Твой рабочий стол на компьютере:", a: [{t:"Идеальный минимализм", c:"Минимализм десктопа", p:50}, {t:"Миллион 'Новый документ.txt'", c:"Свалка документов", p:300}, {t:"Свалка из старых билдов", c:"Архив старых билдов", p:250}] },
+                en: { q: "Your computer desktop layout:", a: [{t:"Perfect minimalism", c:"Desktop minimalism", p:50}, {t:"A million 'New Document.txt'", c:"Text document mess", p:300}, {t:"A mess of old builds", c:"Build archive", p:250}] }
+            },
+            {
+                ru: { q: "Сколько чашек кофе или энергетика выпито?", a: [{t:"Чистая вода", c:"ЗОЖ-налог", p:0}, {t:"1-2 для поддержания жизни", c:"Кофеиновый допинг", p:150}, {t:"Сердце стучит ритмом хардбаса", c:"Атака кофеина", p:400}] },
+                en: { q: "How many cups of coffee or energy drinks today?", a: [{t:"Pure water only", c:"Healthy lifestyle", p:0}, {t:"1-2 just to stay alive", c:"Caffeine baseline", p:150}, {t:"Heart beats to hardbass", c:"Caffeine overdose", p:400}] }
+            },
+            {
+                ru: { q: "Если нужно срочно убраться в комнате, ты:", a: [{t:"Убираюсь, лишь бы не учить", c:"Продукт. прокрастинация", p:350}, {t:"Жду, пока вещи заговорят", c:"Тотальный хаос", p:200}, {t:"У меня всегда чисто", c:"Стерильная зона", p:50}] },
+                en: { q: "If you urgently need to clean your room, you:", a: [{t:"Clean to avoid studying", c:"Productive lazyness", p:350}, {t:"Wait until clothes talk", c:"Extreme room neglect", p:200}, {t:"It's always perfectly clean", c:"Sterile room bonus", p:50}] }
+            },
+            {
+                ru: { q: "Открыто вкладок в браузере прямо сейчас:", a: [{t:"До 5 (только нужное)", c:"Порядок в браузере", p:50}, {t:"Около 20, половина — доки", c:"Кладбище документации", p:200}, {t:"Компьютер лагает", c:"Браузерный апокалипсис", p:400}] },
+                en: { q: "Browser tabs open right now:", a: [{t:"Up to 5 (only what's needed)", c:"Browser sanity", p:50}, {t:"Around 20, half unread", c:"Abandoned doc tabs", p:200}, {t:"The PC lags from tabs", c:"Tab overload", p:400}] }
+            }
+        ];
+
+        function startQuiz() {
+            document.getElementById('landing-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            activeQuestionsOrder = Array.from({length: questionsData.length}, (_, i) => i);
+            for (let i = activeQuestionsOrder.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [activeQuestionsOrder[i], activeQuestionsOrder[j]] = [activeQuestionsOrder[j], activeQuestionsOrder[i]];
+            }
+            currentIdx = 0;
+            chosenIndexes = [];
+            history.replaceState({step: 'home'}, '', './');
+            history.pushState({step: 0}, '', '#q1');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentIdx >= activeQuestionsOrder.length) {
+                document.getElementById('quiz-screen').classList.add('hidden');
+                document.getElementById('result-screen').classList.remove('hidden');
+                generateAndShowReceipt();
+                return;
+            }
+            if (!blockHistoryPush) {
+                history.pushState({step: currentIdx}, '', `#q${currentIdx + 1}`);
+            }
+            blockHistoryPush = false;
+
+            const s = uiTranslations[currentLang];
+            document.getElementById('progress').innerText = `${s.progressText} ${currentIdx + 1} ${s.progressOf} ${activeQuestionsOrder.length}`;
+            
+            const originalQuestionIdx = activeQuestionsOrder[currentIdx];
+            const qBlock = questionsData[originalQuestionIdx][currentLang];
+            document.getElementById('question-text').innerText = `${currentIdx + 1}. ${qBlock.q}`;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            qBlock.a.forEach((ans, answerIdx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = ans.t;
+                btn.onclick = () => {
+                    chosenIndexes.push({ qIdx: originalQuestionIdx, aIdx: answerIdx });
+                    currentIdx++;
+                    renderQuestion();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        async function generateAndShowReceipt() {
+            const s = uiTranslations[currentLang];
+            document.getElementById('result').innerHTML = `<h2 id="loading-text" style="text-transform: uppercase;">${s.loadingText}</h2>`;
+
+            let totalRub = 0;
+            const finalItems = chosenIndexes.map(choice => {
+                const baseItemRu = questionsData[choice.qIdx]['ru'].a[choice.aIdx];
+                const activeItem = questionsData[choice.qIdx][currentLang].a[choice.aIdx];
+                totalRub += baseItemRu.p; 
+                let displayCost = currentLang === 'ru' ? baseItemRu.p : (baseItemRu.p / 80).toFixed(2);
+                return { name: activeItem.c, cost: String(displayCost) };
+            });
+
+            let finalVerdictText = "";
+            for (let v of verdictsLogic) {
+                if (totalRub <= v.max) {
+                    finalVerdictText = v[currentLang];
+                    break;
+                }
+            }
+
+            let displayTotal = currentLang === 'ru' ? totalRub : (totalRub / 80).toFixed(2);
+            let totalString = `${s.r_total} ${currentLang === 'en' ? s.r_currency : ''}${displayTotal}${currentLang === 'ru' ? s.r_currency : ''}`;
+
+            const payload = {
+                title: s.r_title,
+                subtitle: s.r_subtitle,
+                date_str: `${s.r_date} ${getReceiptDateTime(currentLang)}`,
+                items: finalItems,
+                total_str: totalString,
+                verdict: finalVerdictText,
+                footer_1: s.r_footer1,
+                footer_2: s.r_footer2
+            };
+
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            const blob = await res.blob();
+            if (generatedImgUrl) URL.revokeObjectURL(generatedImgUrl); 
+            generatedImgUrl = URL.createObjectURL(blob);
+            
+            const img = document.createElement('img');
+            img.src = generatedImgUrl;
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(img);
+
+            const actionContainer = document.createElement('div');
+            actionContainer.className = 'result-actions';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'action-btn';
+            downloadBtn.id = 'dl-action-btn';
+            downloadBtn.innerText = s.downloadBtn;
+            downloadBtn.onclick = downloadReceipt;
+
+            const homeBtn = document.createElement('button');
+            homeBtn.className = 'action-btn secondary';
+            homeBtn.id = 'home-action-btn';
+            homeBtn.innerText = s.homeBtn;
+            homeBtn.onclick = resetToHome;
+
+            actionContainer.appendChild(downloadBtn);
+            actionContainer.appendChild(homeBtn);
+            resultDiv.appendChild(actionContainer);
+        }
+
+        function downloadReceipt() {
+            if (!generatedImgUrl) return;
+            const link = document.createElement('a');
+            link.href = generatedImgUrl;
+            link.download = `petty_receipt_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetToHome() {
+            generatedImgUrl = null;
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('landing-screen').classList.remove('hidden');
+            currentIdx = 0;
+            chosenIndexes = [];
+            history.pushState({step: 'home'}, '', './');
+            updateUI();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
